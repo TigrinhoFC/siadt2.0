@@ -3,171 +3,175 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { User, Mail, Lock, Eye, EyeOff, Monitor, Loader2 } from 'lucide-react';
+import { Eye, EyeOff, Monitor, Loader2, AlertCircle, X, User, Mail, Lock } from 'lucide-react';
 
-// Importações do Firebase
+// Firebase
 import { auth, db } from '@/firebase/config';
-import { createUserWithEmailAndPassword } from 'firebase/auth';
-import { doc, setDoc } from 'firebase/firestore';
+import { createUserWithEmailAndPassword, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
+import { doc, setDoc, getDoc } from 'firebase/firestore';
 
 export default function CadastroPage() {
   const [nome, setNome] = useState('');
   const [email, setEmail] = useState('');
-  const [senha, setSenha] = useState('');
+  const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
   const router = useRouter();
 
-  const handleCadastro = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (senha.length < 6) {
-      alert("A senha deve ter no mínimo 6 caracteres.");
-      return;
-    }
-
+  // --- CADASTRO COM GOOGLE ---
+  const handleGoogleCadastro = async () => {
     setLoading(true);
+    setErrorMsg(null);
+    const provider = new GoogleAuthProvider();
 
     try {
-      // 1. Cria o usuário no Firebase Authentication
-      const userCredential = await createUserWithEmailAndPassword(auth, email, senha);
+      const result = await signInWithPopup(auth, provider);
+      const user = result.user;
+
+      // Verifica se o documento do usuário já existe para não sobrescrever dados antigos
+      const userDoc = await getDoc(doc(db, "usuarios", user.uid));
+
+      if (!userDoc.exists()) {
+        await setDoc(doc(db, "usuarios", user.uid), {
+          nome: user.displayName || "Usuário Google",
+          email: user.email,
+          nivelAcesso: "operador",
+          criadoEm: new Date().toISOString()
+        });
+      }
+
+      router.push('/Dashboard');
+    } catch (err: any) {
+      console.error(err);
+      setErrorMsg("Falha ao cadastrar com Google. Tente novamente.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // --- CADASTRO MANUAL ---
+  const handleCadastro = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setErrorMsg(null);
+
+    try {
+      const userCredential = await createUserWithEmailAndPassword(auth, email.trim(), password);
       const user = userCredential.user;
 
-      // 2. Tenta salvar os dados no Firestore
-      try {
-        await setDoc(doc(db, "usuarios", user.uid), {
-          nome: nome,
-          email: email,
-          uid: user.uid,
-          dataCriacao: new Date().toISOString(),
-          nivel: 'usuario'
-        });
-      } catch (firestoreError: any) {
-        console.error("Erro ao salvar no Firestore:", firestoreError);
-      
-      }
+      await setDoc(doc(db, "usuarios", user.uid), {
+        nome: nome,
+        email: email.trim(),
+        nivelAcesso: "operador",
+        criadoEm: new Date().toISOString()
+      });
 
-      alert("Conta criada com sucesso!");
       router.push('/Dashboard');
-      
     } catch (error: any) {
-      console.error("Erro no cadastro:", error.code);
-      
-      let mensagem = "Ocorreu um erro ao criar a conta.";
-      
       if (error.code === 'auth/email-already-in-use') {
-        mensagem = "Este e-mail já está cadastrado.";
-      } else if (error.code === 'auth/invalid-email') {
-        mensagem = "Formato de e-mail inválido.";
-      } else if (error.code === 'auth/network-request-failed') {
-        mensagem = "Erro de conexão. Verifique sua internet.";
+        setErrorMsg("Este e-mail já está em uso.");
+      } else if (error.code === 'auth/weak-password') {
+        setErrorMsg("A senha deve ter no mínimo 6 caracteres.");
+      } else {
+        setErrorMsg("Erro ao criar conta. Verifique os dados.");
       }
-
-      alert(mensagem);
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-[#1a233a] bg-gradient-to-b from-[#1e293b] to-[#0f172a] text-white p-4 font-sans">
+    <div className="min-h-screen flex flex-col items-center justify-center bg-[#0f172a] text-white p-4 font-sans">
       
-      {/* Cabeçalho */}
+      {/* Logo SIADT */}
       <div className="flex flex-col items-center mb-6 text-center">
-        <div className="bg-blue-600 p-3 rounded-xl mb-4 shadow-lg shadow-blue-500/20">
-          <Monitor size={32} />
+        <div className="bg-blue-600 p-3 rounded-2xl mb-4 shadow-[0_0_20px_rgba(37,99,235,0.3)]">
+          <Monitor size={32} strokeWidth={2.5} />
         </div>
-        <h1 className="text-3xl font-bold tracking-tight">Criar Conta</h1>
-        <p className="text-gray-400 mt-2">Sistema de Monitoramento SIADT</p>
+        <h1 className="text-4xl font-extrabold tracking-tighter">SIADT</h1>
+        <p className="text-gray-400 mt-2 text-sm uppercase tracking-widest font-medium">Novo Cadastro</p>
       </div>
 
-      {/* Card de Cadastro */}
-      <div className="w-full max-w-md bg-white/5 backdrop-blur-md border border-white/10 rounded-3xl p-8 shadow-2xl">
-        <form onSubmit={handleCadastro} className="space-y-5">
-          
-          {/* Campo Nome */}
+      <div className="w-full max-w-md bg-[#1e293b]/50 backdrop-blur-xl border border-white/10 rounded-3xl p-8 shadow-2xl">
+        
+        {errorMsg && (
+          <div className="mb-6 bg-red-500/10 border border-red-500/50 p-4 rounded-xl flex items-start gap-3 animate-in fade-in slide-in-from-top-2">
+            <AlertCircle className="text-red-500 shrink-0" size={20} />
+            <p className="text-sm text-red-200 font-medium flex-1">{errorMsg}</p>
+            <button onClick={() => setErrorMsg(null)}><X size={18} className="text-red-500/50" /></button>
+          </div>
+        )}
+
+        <form onSubmit={handleCadastro} className="space-y-4">
           <div>
-            <label className="block text-xs font-semibold mb-2 text-gray-400 uppercase tracking-wider">Nome Completo</label>
-            <div className="relative">
-              <User className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" size={18} />
-              <input 
-                type="text" 
-                required
-                disabled={loading}
-                value={nome}
-                onChange={(e) => setNome(e.target.value)}
-                placeholder="Ex: Matheus Silva"
-                className="w-full bg-[#2d3748]/40 border border-white/10 rounded-lg pl-10 pr-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all text-white disabled:opacity-50"
-              />
-            </div>
+            <label className="block text-xs font-bold uppercase tracking-wider mb-2 text-gray-400 flex items-center gap-2">
+              <User size={14} /> Nome Completo
+            </label>
+            <input 
+              type="text" required value={nome} onChange={(e) => setNome(e.target.value)}
+              className="w-full bg-[#0f172a] border border-white/10 rounded-xl px-4 py-3 focus:ring-2 focus:ring-blue-500/50 outline-none text-white"
+              placeholder="Ex: João Silva"
+            />
           </div>
 
-          {/* Campo E-mail */}
           <div>
-            <label className="block text-xs font-semibold mb-2 text-gray-400 uppercase tracking-wider">E-mail</label>
-            <div className="relative">
-              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" size={18} />
-              <input 
-                type="email" 
-                required
-                disabled={loading}
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="seu@email.com"
-                className="w-full bg-[#2d3748]/40 border border-white/10 rounded-lg pl-10 pr-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all text-white disabled:opacity-50"
-              />
-            </div>
+            <label className="block text-xs font-bold uppercase tracking-wider mb-2 text-gray-400 flex items-center gap-2">
+              <Mail size={14} /> E-mail
+            </label>
+            <input 
+              type="email" required value={email} onChange={(e) => setEmail(e.target.value)}
+              className="w-full bg-[#0f172a] border border-white/10 rounded-xl px-4 py-3 focus:ring-2 focus:ring-blue-500/50 outline-none text-white"
+              placeholder="nome@siadt.com"
+            />
           </div>
 
-          {/* Campo Senha */}
           <div>
-            <label className="block text-xs font-semibold mb-2 text-gray-400 uppercase tracking-wider">Senha</label>
+            <label className="block text-xs font-bold uppercase tracking-wider mb-2 text-gray-400 flex items-center gap-2">
+              <Lock size={14} /> Senha
+            </label>
             <div className="relative">
-              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" size={18} />
               <input 
-                type={showPassword ? "text" : "password"} 
-                required
-                disabled={loading}
-                value={senha}
-                onChange={(e) => setSenha(e.target.value)}
+                type={showPassword ? "text" : "password"} required value={password} onChange={(e) => setPassword(e.target.value)}
+                className="w-full bg-[#0f172a] border border-white/10 rounded-xl px-4 py-3 focus:ring-2 focus:ring-blue-500/50 outline-none text-white"
                 placeholder="Mínimo 6 caracteres"
-                className="w-full bg-[#2d3748]/40 border border-white/10 rounded-lg pl-10 pr-12 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all text-white disabled:opacity-50"
               />
-              <button 
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white transition-colors"
-              >
-                {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+              <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500">
+                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
               </button>
             </div>
           </div>
 
-          {/* Botão de Envio */}
           <button 
-            type="submit"
-            disabled={loading}
-            className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-4 rounded-xl shadow-lg shadow-blue-600/20 transition-all transform active:scale-[0.98] flex items-center justify-center gap-2 disabled:bg-blue-800 disabled:cursor-not-allowed"
+            type="submit" disabled={loading}
+            className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-4 rounded-xl shadow-lg transition-all flex items-center justify-center gap-2 mt-2"
           >
-            {loading ? (
-              <>
-                <Loader2 className="animate-spin" size={20} />
-                Criando conta...
-              </>
-            ) : (
-              "Finalizar Cadastro"
-            )}
+            {loading ? <Loader2 className="animate-spin" size={20} /> : "Criar Conta"}
           </button>
         </form>
+
+        <div className="relative my-6">
+          <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-white/10"></div></div>
+          <div className="relative flex justify-center text-xs uppercase"><span className="bg-[#1e293b] px-2 text-gray-500 font-bold">Ou cadastre-se com</span></div>
+        </div>
+
+        <button 
+          onClick={handleGoogleCadastro} disabled={loading} type="button"
+          className="w-full bg-white hover:bg-gray-100 text-gray-900 font-bold py-3.5 rounded-xl transition-all flex items-center justify-center gap-3"
+        >
+          <svg className="w-5 h-5" viewBox="0 0 24 24">
+            <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+            <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+            <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
+            <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+          </svg>
+          Google
+        </button>
       </div>
 
-      {/* Link para Login */}
-      <p className="mt-8 text-gray-400 text-sm">
-        Já possui uma conta?{' '}
-        <Link href="/Login" className="text-blue-500 font-medium hover:underline">
-          Fazer Login
-        </Link>
+      <p className="mt-8 text-gray-500 text-sm">
+        Já tem acesso? <Link href="/Login" className="text-blue-500 font-bold hover:underline">Fazer Login</Link>
       </p>
     </div>
   );
