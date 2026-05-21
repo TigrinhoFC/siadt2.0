@@ -1,9 +1,11 @@
 "use client";
 import React, { useEffect, useState } from 'react';
 import { Toaster, toast } from 'sonner';
+import Link from 'next/link'; // Importado para navegação
 import { 
   FileText, Plus, Search, Eye, AlertCircle, ShieldCheck, 
-  Activity, BarChart3, ArrowUpDown, Download, X, Loader2 
+  Activity, BarChart3, ArrowUpDown, Download, X, Loader2,
+  HardHat, ArrowLeft // Importado ArrowLeft
 } from 'lucide-react';
 
 // Componentes para PDF
@@ -45,7 +47,6 @@ export default function RelatoriosPage() {
     descricao: ""
   });
 
-  // Evita erro de Hydration com react-pdf e carrega dados
   useEffect(() => {
     setIsClient(true);
     const q = query(collection(db, "relatorios"), orderBy("timestamp", "desc"));
@@ -57,7 +58,6 @@ export default function RelatoriosPage() {
     return () => unsub();
   }, []);
 
-  // --- FUNÇÃO DE EXPORTAÇÃO CSV ---
   const exportarParaCSV = () => {
     if (registros.length === 0) {
       toast.error("Não há dados para exportar.");
@@ -130,27 +130,39 @@ export default function RelatoriosPage() {
     <div className="min-h-screen bg-[#0f172a] text-white p-8">
       <Toaster theme="dark" richColors />
 
-      <div className="max-w-[1400px] mx-auto mb-10 flex justify-between items-start">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Relatório de Deslizamentos</h1>
-          <p className="text-gray-400 mt-2">Monitoramento e gestão de ocorrências geotécnicas</p>
-        </div>
-        <button 
-          onClick={() => setIsModalOpen(true)}
-          className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl font-bold flex items-center gap-2 transition-all shadow-lg shadow-blue-600/20"
+      <div className="max-w-[1400px] mx-auto mb-10">
+        {/* BOTÃO VOLTAR */}
+        <Link 
+          href="/Dashboard" 
+          className="inline-flex items-center gap-2 text-gray-400 hover:text-white mb-6 transition-colors group"
         >
-          <Plus size={18} /> Novo Registro
-        </button>
+          <ArrowLeft size={18} className="group-hover:-translate-x-1 transition-transform" />
+          <span className="text-sm font-medium">Voltar ao Dashboard</span>
+        </Link>
+
+        <div className="flex justify-between items-start">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Relatório de Deslizamentos</h1>
+            <p className="text-gray-400 mt-2">Monitoramento e gestão de ocorrências geotécnicas</p>
+          </div>
+          <button 
+            onClick={() => setIsModalOpen(true)}
+            className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl font-bold flex items-center gap-2 transition-all shadow-lg shadow-blue-600/20"
+          >
+            <Plus size={18} /> Novo Registro
+          </button>
+        </div>
       </div>
 
       <div className="max-w-[1400px] mx-auto space-y-8">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <StatCardRelatorio title="Total de Registros" value={registros.length} icon={BarChart3} color="text-blue-500" />
           <StatCardRelatorio title="Nível Crítico" value={registros.filter(r => r.risco === 'Crítico').length} icon={AlertCircle} color="text-red-500" />
-          <StatCardRelatorio title="Em Monitoramento" value={registros.filter(r => r.status === 'Em Monitoramento').length} icon={Activity} color="text-blue-400" />
+          <StatCardRelatorio title="Obras Ativas" value={registros.filter(r => r.status === 'Em Monitoramento').length} icon={HardHat} color="text-orange-400" />
           <StatCardRelatorio title="Controlados" value={registros.filter(r => r.status === 'Controlado').length} icon={ShieldCheck} color="text-green-500" />
         </div>
 
+        {/* ... Restante do código permanece igual ... */}
         <div className="bg-[#1e293b]/30 border border-white/5 p-4 rounded-2xl flex flex-wrap gap-4 items-center">
           <div className="relative flex-1 min-w-[300px]">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500" size={18} />
@@ -165,10 +177,9 @@ export default function RelatoriosPage() {
 
         <div className="bg-[#161f33]/50 border border-white/5 rounded-3xl overflow-hidden shadow-2xl">
           <div className="p-6 border-b border-white/5 flex justify-between items-center bg-white/5">
-             <span className="text-sm font-bold text-gray-400">{registrosFiltrados.length} registros encontrados</span>
-             
-             {/* BOTÃO DE EXPORTAR CSV CONECTADO */}
-             <button 
+              <span className="text-sm font-bold text-gray-400">{registrosFiltrados.length} registros encontrados</span>
+              
+              <button 
                 onClick={exportarParaCSV}
                 className="text-xs flex items-center gap-2 text-emerald-400 hover:text-emerald-300 bg-emerald-500/10 px-3 py-1.5 rounded-lg border border-emerald-500/20 transition-all"
               >
@@ -231,7 +242,7 @@ export default function RelatoriosPage() {
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
           <div className="bg-[#1e293b] border border-white/10 w-full max-w-lg rounded-3xl overflow-hidden shadow-2xl">
             <div className="p-6 border-b border-white/5 flex justify-between items-center">
-              <h2 className="text-xl font-bold flex items-center gap-2"><FileText className="text-blue-500" /> Novo Registro</h2>
+              <h2 className="text-xl font-bold flex items-center gap-2"><HardHat className="text-blue-500" /> Novo Registro</h2>
               <button onClick={() => setIsModalOpen(false)} className="text-gray-500 hover:text-white"><X size={20} /></button>
             </div>
             
@@ -241,7 +252,6 @@ export default function RelatoriosPage() {
                 className="w-full bg-[#0f172a] border border-white/10 rounded-xl p-3 text-sm focus:border-blue-500 outline-none"
                 onChange={(e) => setNovoRegistro({...novoRegistro, titulo: e.target.value})}
               />
-
               <div className="grid grid-cols-2 gap-4">
                 <select 
                   className="bg-[#0f172a] border border-white/10 rounded-xl p-3 text-sm outline-none"

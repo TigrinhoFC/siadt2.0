@@ -1,11 +1,13 @@
 "use client";
 
 import React, { useEffect, useState } from 'react';
+import Link from 'next/link'; // Importado para navegação
 import { Toaster, toast } from 'sonner';
 
 import { 
   Bell, AlertTriangle, Zap, Search, 
-  User, MapPin, CheckCircle2, Clock, Plus, Loader2, X
+  User, MapPin, CheckCircle2, Clock, Plus, Loader2, X,
+  ArrowLeft // Importado ArrowLeft
 } from 'lucide-react';
 
 // Firebase
@@ -15,9 +17,6 @@ import {
   doc, updateDoc, serverTimestamp, addDoc 
 } from 'firebase/firestore';
 
-// =========================
-// 🧩 SUBCOMPONENTES
-// =========================
 
 const AlertaCard = ({ alerta }: { alerta: any }) => {
   const isCritico = alerta.severidade === 'Emergência' || alerta.severidade === 'Crítico';
@@ -117,10 +116,6 @@ const HeaderStat = ({ label, value, icon: Icon, color }: any) => (
   </div>
 );
 
-// =========================
-// 🚀 TELA PRINCIPAL
-// =========================
-
 export default function AlertasEmitidos() {
   const [alertas, setAlertas] = useState<any[]>([]);
   const [filtro, setFiltro] = useState("");
@@ -149,7 +144,6 @@ export default function AlertasEmitidos() {
     return () => unsub();
   }, []);
 
-  // INTEGRAÇÃO COM FIREBASE
   const handleEmitirAlerta = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.titulo || !formData.area) {
@@ -172,7 +166,6 @@ export default function AlertasEmitidos() {
       toast.success("🚨 ALERTA EMITIDO COM SUCESSO!", { id: toastId });
       setIsModalOpen(false);
       
-      // Reseta o formulário
       setFormData({ 
         titulo: '', severidade: 'Informativo', status: 'Ativo', 
         area: '', emissor: '', descricao: '' 
@@ -202,6 +195,16 @@ export default function AlertasEmitidos() {
       <Toaster theme="dark" position="top-right" richColors closeButton />
 
       <div className="max-w-[1200px] mx-auto">
+        
+        {/* BOTÃO VOLTAR DASHBOARD */}
+        <Link 
+          href="/Dashboard" 
+          className="inline-flex items-center gap-2 text-gray-500 hover:text-white mb-6 transition-colors group"
+        >
+          <ArrowLeft size={18} className="group-hover:-translate-x-1 transition-transform" />
+          <span className="text-sm font-medium">Voltar ao Dashboard</span>
+        </Link>
+
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
           <div>
             <p className="text-blue-500 text-[10px] font-black uppercase tracking-[0.2em]">Sistema de Monitoramento</p>

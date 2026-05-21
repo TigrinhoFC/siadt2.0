@@ -140,7 +140,7 @@ export const RelatorioPDF = ({ data }: any) => {
         <View style={styles.header}>
           <View style={styles.logoSection}>
             <View style={styles.logoIcon} />
-            <Text style={styles.companyName}>GEO-SAFE MONITOR</Text>
+            <Text style={styles.companyName}>SIADT</Text>
           </View>
           <Text style={styles.reportBadge}>OCORRÊNCIA {data.idGerado}</Text>
         </View>
@@ -186,7 +186,7 @@ export const RelatorioPDF = ({ data }: any) => {
 
         {/* Rodapé */}
         <Text style={styles.footer}>
-          Documento gerado eletronicamente via Sistema Geo-Safe. Autenticidade garantida pelo ID {data.id}.
+          Documento gerado eletronicamente via Sistema SIADT. Autenticidade garantida pelo ID {data.id}.
         </Text>
       </Page>
     </Document>
